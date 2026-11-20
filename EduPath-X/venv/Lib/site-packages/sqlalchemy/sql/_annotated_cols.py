@@ -15,15 +15,15 @@ from typing import Protocol
 from typing import TYPE_CHECKING
 
 from . import sqltypes
-from ._typing import _T
+from ._typing import _T_co
 from ._typing import _Ts
 from .base import _NoArg
 from .base import ReadOnlyColumnCollection
 from .. import util
 from ..exc import ArgumentError
 from ..exc import InvalidRequestError
+from ..util import dunders_re
 from ..util import typing as sa_typing
-from ..util.langhelpers import dunders_re
 from ..util.typing import Never
 from ..util.typing import Self
 from ..util.typing import TypeVar
@@ -37,7 +37,7 @@ if TYPE_CHECKING:
     from ..util.typing import _AnnotationScanType
 
 
-class Named(Generic[_T]):
+class Named(Generic[_T_co]):
     """A named descriptor that is interpreted by SQLAlchemy in various ways.
 
     .. seealso::
@@ -61,7 +61,7 @@ class Named(Generic[_T]):
         @overload
         def __get__(
             self, instance: TypedColumns, owner: Any
-        ) -> Column[_T]: ...
+        ) -> Column[_T_co]: ...
         @overload
         def __get__(self, instance: Any, owner: Any) -> Self: ...
 
@@ -97,7 +97,7 @@ class TypedColumns(ReadOnlyColumnCollection[str, "Column[Any]"]):
       to set the SQL type and nullability if not provided by the instance.
       The information provided in the instance will take precedence over
       the annotation when they are conflicting, for example if setting
-      nullable=True with an annotation tha does not include ``None``.
+      nullable=True with an annotation that does not include ``None``.
 
     In all cases the name is inferred from the attribute name, unless
     explicitly provided.

@@ -31,7 +31,7 @@ export const AIAssistantWidget: React.FC<AIAssistantWidgetProps> = ({ onOpenAssi
     try {
       const res: AssistantResponse = await askAssistant(userText);
       setMessages(prev => [...prev, { sender: 'bot', text: res.reply, sources: res.data_sources_used }]);
-    } catch (err) {
+    } catch {
       setMessages(prev => [...prev, { sender: 'bot', text: "I'm having trouble querying learner states right now. Please try again." }]);
     } finally {
       setIsSending(false);

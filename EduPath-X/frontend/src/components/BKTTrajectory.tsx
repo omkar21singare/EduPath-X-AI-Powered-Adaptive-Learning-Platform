@@ -5,19 +5,25 @@ interface Props {
 }
 
 export function BKTTrajectory({ recentActivity }: Props) {
-  // Try to parse historical BKT data if available.
-  // We need to map it by interaction index.
-  const hasData = recentActivity && recentActivity.length > 0 && recentActivity.some(a => a.bkt_posterior !== undefined);
+  // Check for bkt_posterior in recentActivity items
+  const validPoints = (recentActivity || []).filter(
+    a => a && (typeof a.bkt_posterior === 'number' || typeof a.bkt_prior === 'number')
+  );
+  const hasData = validPoints.length > 0;
   
   let chartData: any[] = [];
   if (hasData) {
-    // Reverse because recentActivity is descending by timestamp usually
-    const ascending = [...recentActivity].reverse();
-    chartData = ascending.map((act, i) => ({
-      interaction: i + 1,
-      concept: act.concept_code || 'Concept',
-      mastery: act.bkt_posterior ? act.bkt_posterior * 100 : 0
-    }));
+    // Reverse because recentActivity is descending by timestamp
+    const ascending = [...validPoints].reverse();
+    chartData = ascending.map((act, i) => {
+      const posteriorVal = act.bkt_posterior !== undefined ? act.bkt_posterior : act.bkt_prior;
+      return {
+        interaction: `Attempt ${i + 1}`,
+        concept: act.concept_title || act.concept_code || 'DSA Concept',
+        mastery: Math.round((posteriorVal || 0) * 100),
+        is_correct: act.is_correct ? 'Correct' : 'Incorrect'
+      };
+    });
   }
 
   return (

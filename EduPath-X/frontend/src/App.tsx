@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { SimulationBar } from './components/SimulationBar';
 import { DashboardSkeleton } from './components/DashboardSkeleton';
@@ -23,21 +23,27 @@ import { AIAssistantPage } from './components/AIAssistantPage';
 import { SettingsPage } from './components/SettingsPage';
 import { RecommendationsPage } from './components/RecommendationsPage';
 import { StudyMaterialModal } from './components/StudyMaterialModal';
+import { AuthModal } from './components/AuthModal';
+import { useWebSocket } from './hooks/useWebSocket';
 
 import { 
   getDashboard, 
   getMaterial, 
   getQuestions, 
   simulateDays, 
-  resetSimulation 
+  resetSimulation,
+  getStoredLearnerId,
+  clearAuthSession
 } from './services/api';
 import type { DashboardResponse, ConceptNode, LearningMaterial, Question, Recommendation } from './types';
-import { Calendar, Bell } from 'lucide-react';
+import { Calendar, Bell, LogIn, LogOut, Radio } from 'lucide-react';
 
 export function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [dashboardData, setDashboardData] = useState<DashboardResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [learnerId, setLearnerId] = useState<number>(getStoredLearnerId());
+  const [isOpenAuth, setIsOpenAuth] = useState(false);
 
   // Simulation state
   const [currentSimDay, setCurrentSimDay] = useState(1);
@@ -56,27 +62,38 @@ export function App() {
   const [isOpenEvaluation, setIsOpenEvaluation] = useState(false);
 
   // Load Dashboard Data
-  const loadDashboard = async () => {
+  const loadDashboard = useCallback(async () => {
     try {
       setIsLoading(true);
-      const data = await getDashboard(1);
+      const currentId = getStoredLearnerId();
+      setLearnerId(currentId);
+      const data = await getDashboard(currentId);
       setDashboardData(data);
     } catch (err) {
       console.error("Failed loading dashboard", err);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
+
+  // WebSocket Live Push Integration
+  const handleWebSocketUpdate = useCallback((msg: any) => {
+    if (msg.event === 'KNOWLEDGE_UPDATED' || msg.event === 'GOAL_COMPLETED') {
+      loadDashboard();
+    }
+  }, [loadDashboard]);
+
+  const { isConnected } = useWebSocket(learnerId, handleWebSocketUpdate);
 
   useEffect(() => {
     loadDashboard();
-  }, []);
+  }, [loadDashboard]);
 
   // Handlers for Simulation
   const handleSimulateDays = async (days: number) => {
     try {
       setIsLoading(true);
-      const res = await simulateDays(days, selectedProfile, 1);
+      const res = await simulateDays(days, selectedProfile, learnerId);
       setCurrentSimDay(res.current_day);
       await loadDashboard();
     } catch (err) {
@@ -89,7 +106,7 @@ export function App() {
   const handleResetSimulation = async () => {
     try {
       setIsLoading(true);
-      await resetSimulation(1);
+      await resetSimulation(learnerId);
       setCurrentSimDay(1);
       await loadDashboard();
     } catch (err) {
@@ -97,6 +114,12 @@ export function App() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleLogout = () => {
+    clearAuthSession();
+    setLearnerId(1);
+    loadDashboard();
   };
 
   // Launch Learning Activity / Quiz
@@ -284,10 +307,36 @@ export function App() {
           </div>
 
           <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-semibold"
+                 style={{
+                   backgroundColor: isConnected ? '#ecfdf5' : '#fef2f2',
+                   borderColor: isConnected ? '#a7f3d0' : '#fecaca',
+                   color: isConnected ? '#065f46' : '#991b1b'
+                 }}>
+              <Radio className={`w-3.5 h-3.5 ${isConnected ? 'text-emerald-500 animate-pulse' : 'text-rose-500'}`} />
+              <span>{isConnected ? 'Live WebSocket Active' : 'Offline'}</span>
+            </div>
+
             <div className="flex items-center gap-2 px-3.5 py-2 bg-slate-50 rounded-xl border border-slate-100 text-xs font-semibold text-slate-600">
               <Calendar className="w-4 h-4 text-slate-400" />
               <span>16 May 2025, Friday</span>
             </div>
+
+            {localStorage.getItem('token') ? (
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-1.5 px-3 py-2 bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 text-xs font-semibold rounded-xl transition-all"
+              >
+                <LogOut className="w-3.5 h-3.5" /> Sign Out
+              </button>
+            ) : (
+              <button
+                onClick={() => setIsOpenAuth(true)}
+                className="flex items-center gap-1.5 px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl shadow-sm transition-all"
+              >
+                <LogIn className="w-3.5 h-3.5" /> Sign In / Account
+              </button>
+            )}
 
             <button className="w-9 h-9 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-100 flex items-center justify-center text-slate-500 transition-colors relative">
               <Bell className="w-4 h-4" />
@@ -344,6 +393,17 @@ export function App() {
       {isOpenEvaluation && (
         <EvaluationModal
           onClose={() => setIsOpenEvaluation(false)}
+        />
+      )}
+
+      {isOpenAuth && (
+        <AuthModal
+          isOpen={isOpenAuth}
+          onClose={() => setIsOpenAuth(false)}
+          onSuccess={() => {
+            setLearnerId(getStoredLearnerId());
+            loadDashboard();
+          }}
         />
       )}
     </div>

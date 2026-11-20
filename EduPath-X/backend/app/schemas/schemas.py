@@ -126,6 +126,8 @@ class QuestionResponse(BaseModel):
     difficulty: str
     estimated_time_seconds: int
     verified_status: str
+    starter_code: Optional[str] = None
+    test_cases: Optional[List[Dict[str, Any]]] = None
     source: Optional[ContentSourceResponse]
 
     class Config:
@@ -133,7 +135,8 @@ class QuestionResponse(BaseModel):
 
 class QuestionSubmit(BaseModel):
     question_id: int
-    selected_option: str
+    selected_option: Optional[str] = ""
+    submitted_code: Optional[str] = None
     response_time_seconds: float = 15.0
     session_id: Optional[int] = None
 
@@ -147,6 +150,7 @@ class QuestionAttemptResult(BaseModel):
     bkt_posterior: float
     mastery_change: float
     concept_code: str
+    code_execution_result: Optional[Dict[str, Any]] = None
     next_recommendation: Optional[Dict[str, Any]] = None
 
 # Knowledge State

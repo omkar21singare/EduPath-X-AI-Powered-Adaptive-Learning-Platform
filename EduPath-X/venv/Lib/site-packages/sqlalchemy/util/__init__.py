@@ -71,6 +71,9 @@ from .compat import win32 as win32
 from .concurrency import await_ as await_
 from .concurrency import await_only as await_only
 from .concurrency import greenlet_spawn as greenlet_spawn
+from .concurrency import (
+    is_cancellation_exception as is_cancellation_exception,
+)
 from .concurrency import is_exit_exception as is_exit_exception
 from .deprecations import became_legacy_20 as became_legacy_20
 from .deprecations import deprecated as deprecated
@@ -98,6 +101,7 @@ from .langhelpers import decode_slice as decode_slice
 from .langhelpers import decorator as decorator
 from .langhelpers import dictlike_iteritems as dictlike_iteritems
 from .langhelpers import duck_type_collection as duck_type_collection
+from .langhelpers import dunders_re as dunders_re
 from .langhelpers import ellipses_string as ellipses_string
 from .langhelpers import EnsureKWArg as EnsureKWArg
 from .langhelpers import exec_code_in_env as exec_code_in_env

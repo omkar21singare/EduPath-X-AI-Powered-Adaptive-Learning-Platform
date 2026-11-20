@@ -174,6 +174,21 @@ client using this setting passed to :func:`_asyncio.create_async_engine`::
 
     https://github.com/MagicStack/asyncpg/issues/727
 
+DBAPI Error Messages
+---------------------
+
+The asyncpg error message are wrapped by in :class:`.EmulatedDBAPIException`
+object providing a more consistent experience for the async drivers.
+A side effect of this change is that the textual representation of
+the error may be different than it was in previous sqlalchemy versions,
+and the ``DETAIL`` line may be missing.
+The original asyncpg exception can be accessed using the
+:attr:`.DBAPIError.driver_exception` attribute.
+
+.. versionchanged:: 2.1.0
+
+    The exceptions are wrapped in :class:`.EmulatedDBAPIException` objects.
+
 """  # noqa
 
 from __future__ import annotations
@@ -886,14 +901,18 @@ class AsyncAdapt_asyncpg_connection(
 
         assert self._transaction is None
         try:
-            self._transaction = self._connection.transaction(
+            transaction = self._connection.transaction(
                 isolation=self.isolation_level,
                 readonly=self.readonly,
                 deferrable=self.deferrable,
             )
-            await self._transaction.start()
+            await transaction.start()
         except Exception as error:
             self._handle_exception(error)
+        else:
+            # only track the transaction once BEGIN has succeeded; a
+            # transaction that failed to start has nothing to roll back
+            self._transaction = transaction
 
     async def _call_and_discard(self, fn: Callable[[], Awaitable[Any]]):
         try:

@@ -18,6 +18,8 @@ from app.api.simulation import router as simulation_router
 from app.api.evaluation import router as evaluation_router
 from app.api.assistant import router as assistant_router
 from app.api.goals import router as goals_router
+from app.api.websocket import router as ws_router
+from app.core.ws_manager import manager
 
 app = FastAPI(
     title="EduPath-X API",
@@ -59,6 +61,7 @@ app.include_router(simulation_router)
 app.include_router(evaluation_router)
 app.include_router(assistant_router)
 app.include_router(goals_router)
+app.include_router(ws_router)
 
 @app.get("/")
 def root():

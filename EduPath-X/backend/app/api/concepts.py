@@ -1,19 +1,25 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-from typing import List
+from typing import List, Optional
 from app.database.session import get_db
-from app.models.models import Concept, ConceptPrerequisite, KnowledgeState, Question
+from app.models.models import Concept, ConceptPrerequisite, KnowledgeState, Question, User
 from app.schemas.schemas import ConceptResponse
 from app.ml.bkt import BKTEngine
+from app.core.auth import resolve_learner_id, get_current_user_optional
 
 router = APIRouter(prefix="/api/concepts", tags=["Concepts"])
 
 @router.get("", response_model=List[ConceptResponse])
-def list_concepts(learner_id: int = 1, db: Session = Depends(get_db)):
+def list_concepts(
+    learner_id: Optional[int] = None,
+    current_user: Optional[User] = Depends(get_current_user_optional),
+    db: Session = Depends(get_db)
+):
+    resolved_id = resolve_learner_id(learner_id, current_user, db)
     concepts = db.query(Concept).order_by(Concept.display_order).all()
     k_states = {
-        ks.concept_id: ks for ks in db.query(KnowledgeState).filter(KnowledgeState.learner_id == learner_id).all()
+        ks.concept_id: ks for ks in db.query(KnowledgeState).filter(KnowledgeState.learner_id == resolved_id).all()
     }
     prereqs = db.query(ConceptPrerequisite).all()
     prereq_map = {}

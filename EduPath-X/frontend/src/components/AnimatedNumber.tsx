@@ -8,10 +8,12 @@ interface AnimatedNumberProps {
 
 export const AnimatedNumber: React.FC<AnimatedNumberProps> = ({ value, duration = 1000, fractionDigits = 0 }) => {
   const [displayValue, setDisplayValue] = useState(value);
+  const displayValueRef = React.useRef(value);
+  displayValueRef.current = displayValue;
 
   useEffect(() => {
     let startTime: number | null = null;
-    const startValue = displayValue;
+    const startValue = displayValueRef.current;
     const endValue = value;
 
     if (startValue === endValue) return;

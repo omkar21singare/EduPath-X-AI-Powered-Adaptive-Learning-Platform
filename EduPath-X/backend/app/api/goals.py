@@ -1,10 +1,13 @@
+import asyncio
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from datetime import datetime
 from app.database.session import get_db
-from app.models.models import LearningGoal, LearnerProfile, Concept, KnowledgeState
+from app.models.models import LearningGoal, LearnerProfile, Concept, KnowledgeState, User
 from app.schemas.schemas import GoalCreate, GoalResponse
+from app.core.auth import resolve_learner_id, get_current_user_optional
+from app.core.ws_manager import manager
 
 router = APIRouter(prefix="/api/goals", tags=["Goals"])
 
@@ -19,7 +22,7 @@ def _build_goal_response(goal: LearningGoal, db: Session) -> GoalResponse:
         ).first()
         if ks:
             current_mastery = ks.mastery_probability
-        concept = db.query(Concept).get(goal.concept_id)
+        concept = db.query(Concept).filter(Concept.id == goal.concept_id).first()
         if concept:
             concept_title = concept.title
     else:
@@ -39,6 +42,21 @@ def _build_goal_response(goal: LearningGoal, db: Session) -> GoalResponse:
         goal.updated_at = datetime.utcnow()
         db.commit()
 
+        # Broadcast real-time unlock/completion
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                asyncio.create_task(manager.broadcast_to_learner(goal.learner_id, {
+                    "event": "GOAL_COMPLETED",
+                    "learner_id": goal.learner_id,
+                    "goal_id": goal.id,
+                    "goal_name": goal.goal_name,
+                    "concept_id": goal.concept_id,
+                    "current_mastery": current_mastery
+                }))
+        except Exception:
+            pass
+
     return GoalResponse(
         id=goal.id,
         learner_id=goal.learner_id,
@@ -56,40 +74,60 @@ def _build_goal_response(goal: LearningGoal, db: Session) -> GoalResponse:
     )
 
 @router.get("", response_model=List[GoalResponse])
-def get_goals(learner_id: int = 1, status: Optional[str] = None, db: Session = Depends(get_db)):
-    query = db.query(LearningGoal).filter(LearningGoal.learner_id == learner_id)
+def get_goals(
+    learner_id: Optional[int] = None,
+    status: Optional[str] = None,
+    current_user: Optional[User] = Depends(get_current_user_optional),
+    db: Session = Depends(get_db)
+):
+    resolved_id = resolve_learner_id(learner_id, current_user, db)
+    query = db.query(LearningGoal).filter(LearningGoal.learner_id == resolved_id)
     if status:
         query = query.filter(LearningGoal.status == status)
     goals = query.order_by(LearningGoal.id.desc()).all()
     return [_build_goal_response(g, db) for g in goals]
 
 @router.get("/active", response_model=Optional[GoalResponse])
-def get_active_goal(learner_id: int = 1, db: Session = Depends(get_db)):
+def get_active_goal(
+    learner_id: Optional[int] = None,
+    current_user: Optional[User] = Depends(get_current_user_optional),
+    db: Session = Depends(get_db)
+):
+    resolved_id = resolve_learner_id(learner_id, current_user, db)
     goal = db.query(LearningGoal).filter(
-        LearningGoal.learner_id == learner_id,
+        LearningGoal.learner_id == resolved_id,
         LearningGoal.status == "ACTIVE"
     ).order_by(LearningGoal.id.desc()).first()
     if not goal:
-        # Fall back to any goal
-        goal = db.query(LearningGoal).filter(LearningGoal.learner_id == learner_id).order_by(LearningGoal.id.desc()).first()
+        goal = db.query(LearningGoal).filter(LearningGoal.learner_id == resolved_id).order_by(LearningGoal.id.desc()).first()
     if not goal:
         return None
     return _build_goal_response(goal, db)
 
 @router.get("/{goal_id}", response_model=GoalResponse)
 def get_goal(goal_id: int, db: Session = Depends(get_db)):
-    goal = db.query(LearningGoal).get(goal_id)
+    goal = db.query(LearningGoal).filter(LearningGoal.id == goal_id).first()
     if not goal:
         raise HTTPException(status_code=404, detail="Goal not found")
     return _build_goal_response(goal, db)
 
 @router.post("", response_model=GoalResponse)
-def create_or_update_goal(payload: GoalCreate, learner_id: int = 1, db: Session = Depends(get_db)):
-    learner = db.query(LearnerProfile).get(learner_id)
+def create_or_update_goal(
+    payload: GoalCreate,
+    learner_id: Optional[int] = None,
+    current_user: Optional[User] = Depends(get_current_user_optional),
+    db: Session = Depends(get_db)
+):
+    resolved_id = resolve_learner_id(learner_id, current_user, db)
+    learner = db.query(LearnerProfile).filter(LearnerProfile.id == resolved_id).first()
     if not learner:
-        raise HTTPException(status_code=404, detail="Learner profile not found")
+        # Auto-create profile if missing
+        learner = LearnerProfile(id=resolved_id)
+        db.add(learner)
+        db.commit()
+        db.refresh(learner)
 
-    concept = db.query(Concept).get(payload.concept_id)
+    concept = db.query(Concept).filter(Concept.id == payload.concept_id).first()
     if not concept:
         raise HTTPException(status_code=404, detail="Concept not found")
 
@@ -98,13 +136,12 @@ def create_or_update_goal(payload: GoalCreate, learner_id: int = 1, db: Session 
 
     # Enforce uniqueness rule: Only one ACTIVE goal per learner & concept
     existing_goal = db.query(LearningGoal).filter(
-        LearningGoal.learner_id == learner_id,
+        LearningGoal.learner_id == resolved_id,
         LearningGoal.concept_id == payload.concept_id,
         LearningGoal.status == "ACTIVE"
     ).first()
 
     if existing_goal:
-        # Update existing goal idempotently rather than duplicating
         existing_goal.target_mastery = target_mastery
         existing_goal.goal_name = goal_name
         if payload.target_date:
@@ -116,7 +153,7 @@ def create_or_update_goal(payload: GoalCreate, learner_id: int = 1, db: Session 
 
     # Create new goal
     new_goal = LearningGoal(
-        learner_id=learner_id,
+        learner_id=resolved_id,
         concept_id=payload.concept_id,
         goal_name=goal_name,
         target_mastery=target_mastery,
@@ -134,12 +171,7 @@ def create_or_update_goal(payload: GoalCreate, learner_id: int = 1, db: Session 
 
 @router.post("/{goal_id}/progress", response_model=GoalResponse)
 def submit_goal_progress(goal_id: int, db: Session = Depends(get_db)):
-    """
-    Idempotent repeated progress submission.
-    Derives progress strictly from actual BKT knowledge state.
-    Does NOT duplicate records or artificially inflate progress.
-    """
-    goal = db.query(LearningGoal).get(goal_id)
+    goal = db.query(LearningGoal).filter(LearningGoal.id == goal_id).first()
     if not goal:
         raise HTTPException(status_code=404, detail="Goal not found")
 

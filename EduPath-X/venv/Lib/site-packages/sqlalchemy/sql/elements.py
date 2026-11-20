@@ -90,6 +90,7 @@ if typing.TYPE_CHECKING:
     from ._typing import _ByArgument
     from ._typing import _ColumnExpressionArgument
     from ._typing import _ColumnExpressionOrStrLabelArgument
+    from ._typing import _CovariantTypeEngineArgument
     from ._typing import _HasDialect
     from ._typing import _InfoType
     from ._typing import _OnlyColumnArgument
@@ -141,7 +142,7 @@ _NMT = TypeVar("_NMT", bound="_NUMBER")
 @overload
 def literal(
     value: Any,
-    type_: _TypeEngineArgument[_T],
+    type_: _CovariantTypeEngineArgument[_T],
     literal_execute: bool = False,
 ) -> BindParameter[_T]: ...
 
@@ -164,7 +165,7 @@ def literal(
 
 def literal(
     value: Any,
-    type_: Optional[_TypeEngineArgument[Any]] = None,
+    type_: Optional[_CovariantTypeEngineArgument[Any]] = None,
     literal_execute: bool = False,
 ) -> BindParameter[Any]:
     r"""Return a literal clause, bound to a bind parameter.
@@ -200,7 +201,7 @@ def literal(
 
 
 def literal_column(
-    text: str, type_: Optional[_TypeEngineArgument[_T]] = None
+    text: str, type_: Optional[_CovariantTypeEngineArgument[_T]] = None
 ) -> ColumnClause[_T]:
     r"""Produce a :class:`.ColumnClause` object that has the
     :paramref:`_expression.column.is_literal` flag set to True.
@@ -1763,7 +1764,7 @@ class ColumnElement(
             co._is_clone_of = selectable._is_clone_of.columns.get(key)
         return key, co
 
-    def cast(self, type_: _TypeEngineArgument[_OPT]) -> Cast[_OPT]:
+    def cast(self, type_: _CovariantTypeEngineArgument[_OPT]) -> Cast[_OPT]:
         """Produce a type cast, i.e. ``CAST(<expression> AS <type>)``.
 
         This is a shortcut to the :func:`_expression.cast` function.
@@ -2061,7 +2062,7 @@ class BindParameter(roles.InElementRole, KeyedColumnElement[_T]):
         self,
         key: Optional[str],
         value: Any = _NoArg.NO_ARG,
-        type_: Optional[_TypeEngineArgument[_T]] = None,
+        type_: Optional[_CovariantTypeEngineArgument[_T]] = None,
         unique: bool = False,
         required: Union[bool, Literal[_NoArg.NO_ARG]] = _NoArg.NO_ARG,
         quote: Optional[bool] = None,
@@ -2145,8 +2146,8 @@ class BindParameter(roles.InElementRole, KeyedColumnElement[_T]):
             else:
                 self.type = type_api._resolve_value_to_type(check_value)
         elif isinstance(type_, type):
-            self.type = type_()
-        elif is_tuple_type(type_):
+            self.type = type_()  # type: ignore[assignment]
+        elif is_tuple_type(type_):  # type: ignore[arg-type]
             if value:
                 if expanding:
                     check_value = value[0]
@@ -2158,7 +2159,7 @@ class BindParameter(roles.InElementRole, KeyedColumnElement[_T]):
             else:
                 cast("BindParameter[TupleAny]", self).type = type_
         else:
-            self.type = type_
+            self.type = type_  # type: ignore[assignment]
 
     def _with_value(self, value, maintain_key=False, required=NO_ARG):
         """Return a copy of this :class:`.BindParameter` with the given value
@@ -2569,7 +2570,12 @@ class TextClause(AbstractTextClause, inspection.Inspectable["TextClause"]):
         ("text", InternalTraversal.dp_string),
     ] + ExecutableStatement._executable_traverse_internals
 
-    _bind_params_regex = re.compile(r"(?<![:\w\x5c]):(\w+)(?!:)", re.UNICODE)
+    # also used by the compiler to render the text; the two must find
+    # the same names, else a name is rendered for which no
+    # BindParameter exists
+    _bind_params_regex = re.compile(
+        r"(?<![:\w\x5c]):(\w+)(?![:\w])", re.UNICODE
+    )
 
     @property
     def _is_star(self) -> bool:  # type: ignore[override]
@@ -2736,6 +2742,30 @@ class TextClause(AbstractTextClause, inspection.Inspectable["TextClause"]):
             return self
 
 
+class _TStringText(ClauseElement):
+    """Represent a literal string portion of a :class:`.TString`.
+
+    Unlike :class:`.TextClause`, the text is not scanned for bound parameter
+    names and has no escaping rules; it is rendered as is.
+
+    .. versionadded:: 2.1.2
+
+    """
+
+    __visit_name__ = "tstring_text"
+
+    _traverse_internals: _TraverseInternalsType = [
+        ("text", InternalTraversal.dp_string)
+    ]
+
+    def __init__(self, text: str):
+        self.text = text
+
+    @property
+    def _is_star(self) -> bool:  # type: ignore[override]
+        return self.text == "*"
+
+
 class TString(AbstractTextClause, inspection.Inspectable["TString"]):
     """Represent a SQL template string using Python 3.14+ t-strings.
 
@@ -2770,7 +2800,7 @@ class TString(AbstractTextClause, inspection.Inspectable["TString"]):
     def _is_star(self) -> bool:  # type: ignore[override]
         return (
             len(self.parts) == 1
-            and isinstance(self.parts[0], TextClause)
+            and isinstance(self.parts[0], _TStringText)
             and self.parts[0]._is_star
         )
 
@@ -2789,7 +2819,7 @@ class TString(AbstractTextClause, inspection.Inspectable["TString"]):
 
         for part in template:
             if isinstance(part, str):
-                self.parts.append(TextClause(part))
+                self.parts.append(_TStringText(part))
             else:
                 assert hasattr(part, "value")
                 self.parts.append(
@@ -3719,7 +3749,7 @@ class Cast(WrapsColumnExpression[_T]):
     def __init__(
         self,
         expression: _ColumnExpressionArgument[Any],
-        type_: _TypeEngineArgument[_T],
+        type_: _CovariantTypeEngineArgument[_T],
     ):
         self.type = type_api.to_instance(type_)
         self.clause = coercions.expect(
@@ -3782,7 +3812,7 @@ class TypeCoerce(WrapsColumnExpression[_T]):
     def __init__(
         self,
         expression: _ColumnExpressionArgument[Any],
-        type_: _TypeEngineArgument[_T],
+        type_: _CovariantTypeEngineArgument[_T],
     ):
         self.type = type_api.to_instance(type_)
         self.clause = coercions.expect(
@@ -4456,7 +4486,7 @@ class Grouping(GroupedElement, ColumnElement[_T]):
         ) -> Self: ...
 
 
-class _OverrideBinds(Grouping[_T]):
+class _OverrideBinds(ColumnElement[_T]):
     """used by cache_key->_apply_params_to_element to allow compilation /
     execution of a SQL element that's been cached, using an alternate set of
     bound parameter values.
@@ -4467,11 +4497,22 @@ class _OverrideBinds(Grouping[_T]):
     .params() method which would perform a deep-copy instead.  This deep
     copy proved to be too expensive for more complex expressions.
 
+    The construct is a stand-in for the element it wraps; it renders, groups
+    and generates a cache key the same way as that element, differing only in
+    the bound parameter values it delivers.
+
     See #11085
 
     """
 
     __visit_name__ = "override_binds"
+
+    _traverse_internals: _TraverseInternalsType = [
+        ("element", InternalTraversal.dp_clauseelement),
+        ("type", InternalTraversal.dp_type),
+    ]
+
+    element: ColumnElement[_T]
 
     def __init__(
         self,
@@ -4481,9 +4522,9 @@ class _OverrideBinds(Grouping[_T]):
     ):
         self.element = element
 
-        # as with Grouping, take on the type of the element we wrap;
-        # otherwise the construct reports NULLTYPE and the result set
-        # for a column that's compiled from here has no result processor
+        # take on the type of the element we wrap; otherwise the construct
+        # reports NULLTYPE and the result set for a column that's compiled
+        # from here has no result processor
         self.type = element.type
         self.translate = {
             k.key: v.value for k, v in zip(replaces_params, bindparams)
@@ -4495,23 +4536,68 @@ class _OverrideBinds(Grouping[_T]):
         """generate a cache key for the given element, substituting its bind
         values for the translation values present."""
 
-        existing_bps: List[BindParameter[Any]] = []
-        ck = self.element._gen_cache_key(anon_map, existing_bps)
+        translate = self.translate
 
-        bindparams.extend(
+        ck = self.element._gen_cache_key(anon_map, bindparams)
+
+        # the anon_map check stops self.element's traversal at objects
+        # already visited, so their bound parameters aren't collected again
+        # here.  this happens when an element visited ahead of this one,
+        # such as the path of a loader option, refers to the same aliased()
+        # subquery as the criteria wrapped here.  those parameters are
+        # already in bindparams with the original values, so the
+        # translation is applied to the whole list.  see #13766
+        bindparams[:] = [
             (
                 bp._with_value(
-                    self.translate[bp.key], maintain_key=True, required=False
+                    translate[bp.key], maintain_key=True, required=False
                 )
-                if bp.key in self.translate
+                if bp.key in translate
                 else bp
             )
-            for bp in existing_bps
-        )
+            for bp in bindparams
+        ]
 
         # ck derives from _gen_cache_key, a compiled function in
         # _cache_key_cy that mypy sees as untyped
         return ck  # type: ignore[no-any-return]
+
+    def self_group(self, against: Optional[OperatorType] = None) -> Self:
+        # group the element we wrap the same way it would group on its own.
+        # see #13753
+        grouped = self.element.self_group(against=against)
+        if grouped is self.element:
+            return self
+
+        new = self._clone()
+        new.element = grouped
+        return new
+
+    def _negate(self) -> ColumnElement[Any]:
+        # negate the element we wrap the same way it would negate on its
+        # own, e.g. NOT (a OR b) rather than NOT a OR b.  see #13753
+        new = self._clone()
+        new.element = self.element._negate()
+        new.type = new.element.type
+        return new
+
+    @util.ro_non_memoized_property
+    def _from_objects(self) -> List[FromClause]:
+        return self.element._from_objects
+
+    @util.non_memoized_property
+    def _is_implicitly_boolean(self) -> bool:
+        return self.element._is_implicitly_boolean
+
+    @util.non_memoized_property
+    def _proxies(self) -> List[ColumnElement[Any]]:
+        return [self.element]
+
+    @util.non_memoized_property
+    def _tq_label(self) -> Optional[str]:
+        return (
+            getattr(self.element, "_tq_label", None) or self._anon_name_label
+        )
 
 
 _FrameIntTuple = tuple[int | None, int | None]
@@ -5179,7 +5265,7 @@ class Label(roles.LabeledColumnExprRole[_T], NamedColumn[_T]):
         self,
         name: Optional[str],
         element: _ColumnExpressionArgument[_T],
-        type_: Optional[_TypeEngineArgument[_T]] = None,
+        type_: Optional[_CovariantTypeEngineArgument[_T]] = None,
     ):
         orig_element = element
         element = coercions.expect(
@@ -5420,7 +5506,7 @@ class ColumnClause(
     def __init__(
         self,
         text: str,
-        type_: Optional[_TypeEngineArgument[_T]] = None,
+        type_: Optional[_CovariantTypeEngineArgument[_T]] = None,
         is_literal: bool = False,
         _selectable: Optional[FromClause] = None,
     ):

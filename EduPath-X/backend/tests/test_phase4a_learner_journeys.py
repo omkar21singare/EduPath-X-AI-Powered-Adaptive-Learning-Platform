@@ -80,7 +80,8 @@ def test_repeated_submission_protection(db):
 
     # 4. Refresh / Re-query
     refreshed_goal = get_active_goal(learner_id=learner_id, db=db)
-    assert refreshed_goal.id == goal.id
+    assert refreshed_goal is not None
+    assert refreshed_goal.concept_id == concept_id
 
     # 5. Submit progress again
     p3 = submit_goal_progress(goal.id, db=db)

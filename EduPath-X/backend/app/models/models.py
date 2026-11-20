@@ -124,6 +124,11 @@ class Question(Base):
     difficulty = Column(String, default="Medium") # Easy, Medium, Hard
     estimated_time_seconds = Column(Integer, default=60)
     verified_status = Column(String, default="VERIFIED")
+    starter_code = Column(Text, nullable=True)
+    test_cases = Column(JSON, nullable=True) # list of {input: str, expected_output: str}
+    calibrated_slip = Column(Float, nullable=True)
+    calibrated_guess = Column(Float, nullable=True)
+    calibrated_difficulty = Column(Float, nullable=True) # Continuous Rasch b parameter
     source_id = Column(Integer, ForeignKey("content_sources.id"), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 

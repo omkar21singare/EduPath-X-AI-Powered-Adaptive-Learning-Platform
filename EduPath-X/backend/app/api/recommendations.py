@@ -1,19 +1,32 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from app.database.session import get_db
 from app.ml.recommendation import recommendation_engine
-from app.models.models import Concept, KnowledgeState, Question, ConceptPrerequisite, LearningGoal
+from app.models.models import Concept, KnowledgeState, Question, ConceptPrerequisite, LearningGoal, User
+from app.core.auth import resolve_learner_id, get_current_user_optional
 
 router = APIRouter(prefix="/api/recommendations", tags=["Recommendations"])
 
 @router.get("", response_model=List[Dict[str, Any]])
-def get_recommendations(learner_id: int = 1, limit: int = 5, db: Session = Depends(get_db)):
-    return recommendation_engine.generate_recommendations(db, learner_id, limit=limit)
+def get_recommendations(
+    learner_id: Optional[int] = None,
+    limit: int = 5,
+    current_user: Optional[User] = Depends(get_current_user_optional),
+    db: Session = Depends(get_db)
+):
+    resolved_id = resolve_learner_id(learner_id, current_user, db)
+    return recommendation_engine.generate_recommendations(db, resolved_id, limit=limit)
 
 @router.get("/explain/{concept_id}")
-def explain_recommendation(concept_id: int, learner_id: int = 1, db: Session = Depends(get_db)):
-    recs = recommendation_engine.generate_recommendations(db, learner_id, limit=20)
+def explain_recommendation(
+    concept_id: int,
+    learner_id: Optional[int] = None,
+    current_user: Optional[User] = Depends(get_current_user_optional),
+    db: Session = Depends(get_db)
+):
+    resolved_id = resolve_learner_id(learner_id, current_user, db)
+    recs = recommendation_engine.generate_recommendations(db, resolved_id, limit=20)
     for r in recs:
         if r["concept_id"] == concept_id:
             return r
@@ -28,7 +41,7 @@ def explain_recommendation(concept_id: int, learner_id: int = 1, db: Session = D
         }
 
     ks = db.query(KnowledgeState).filter(
-        KnowledgeState.learner_id == learner_id,
+        KnowledgeState.learner_id == resolved_id,
         KnowledgeState.concept_id == concept_id
     ).first()
     mastery = ks.mastery_probability if ks else 0.10

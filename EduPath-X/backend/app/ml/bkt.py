@@ -1,9 +1,9 @@
 """
 Bayesian Knowledge Tracing (BKT) Engine for EduPath-X.
-Estimates P(K_c | learner interaction history) continuously.
+Estimates P(K_c | learner interaction history) continuously with dynamic parameter calibration.
 """
 
-from typing import Tuple
+from typing import Tuple, Optional
 
 # Default BKT parameters
 DEFAULT_P_INIT = 0.20
@@ -23,30 +23,50 @@ class BKTEngine:
         current_p_know: float,
         is_correct: bool,
         difficulty: str = "Medium",
-        response_time_sec: float = 15.0
+        response_time_sec: float = 15.0,
+        item_slip: Optional[float] = None,
+        item_guess: Optional[float] = None,
+        item_difficulty_value: Optional[float] = None
     ) -> Tuple[float, float]:
         """
         Updates P(K) given correctness, question difficulty, and response time.
+        Supports dynamic item-calibrated slip, guess, and continuous Rasch difficulty.
         Returns tuple: (prior, posterior)
         """
         prior = max(0.01, min(0.99, current_p_know))
         
-        # Adjust slip/guess based on difficulty
-        p_s = self.p_slip
-        p_g = self.p_guess
-
-        if difficulty == "Easy":
+        # 1. Use calibrated slip/guess if provided, otherwise compute from difficulty
+        if item_slip is not None:
+            p_s = max(0.02, min(0.40, item_slip))
+        elif difficulty == "Easy":
             p_s = 0.05
-            p_g = 0.35
         elif difficulty == "Hard":
             p_s = 0.15
-            p_g = 0.15
+        else:
+            p_s = self.p_slip
 
-        # Response time heuristic: very quick wrong answer implies guessing/rush
+        if item_guess is not None:
+            p_g = max(0.05, min(0.45, item_guess))
+        elif difficulty == "Easy":
+            p_g = 0.35
+        elif difficulty == "Hard":
+            p_g = 0.15
+        else:
+            p_g = self.p_guess
+
+        # 2. Continuous difficulty calibration adjustments (if Rasch b-parameter supplied)
+        if item_difficulty_value is not None:
+            # item_difficulty_value typically in [-2.5, +2.5]
+            # Higher difficulty raises slip slightly, lowers guess
+            diff_factor = max(-2.0, min(2.0, float(item_difficulty_value)))
+            p_g = max(0.05, min(0.40, p_g - 0.05 * diff_factor))
+            p_s = max(0.03, min(0.35, p_s + 0.03 * diff_factor))
+
+        # 3. Response time heuristic: very quick wrong answer implies guessing/rush
         if not is_correct and response_time_sec < 5.0:
             p_s = min(0.25, p_s * 1.5)
 
-        # 1. Calculate P(K | Observation)
+        # 4. Calculate P(K | Observation)
         if is_correct:
             numerator = prior * (1.0 - p_s)
             denominator = numerator + (1.0 - prior) * p_g
@@ -56,7 +76,7 @@ class BKTEngine:
 
         p_obs = numerator / (denominator if denominator > 0 else 1e-6)
 
-        # 2. Transition update: P(K_t) = P(K_t | obs) + (1 - P(K_t | obs)) * P(T)
+        # 5. Transition update: P(K_t) = P(K_t | obs) + (1 - P(K_t | obs)) * P(T)
         posterior = p_obs + (1.0 - p_obs) * self.p_trans
 
         # Bound to [0.01, 0.99]

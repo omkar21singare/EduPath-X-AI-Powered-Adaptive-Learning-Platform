@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import type { Question, QuestionAttemptResult, LearningMaterial } from '../types';
-import { submitQuestion } from '../services/api';
-import { CheckCircle2, XCircle, BookOpen, Loader2 } from 'lucide-react';
+import { submitQuestion, getStoredLearnerId } from '../services/api';
+import { CheckCircle2, XCircle, BookOpen, Loader2, Code } from 'lucide-react';
 import { AnimatedNumber } from './AnimatedNumber';
 
 interface QuizModalProps {
@@ -22,17 +22,37 @@ export const QuizModal: React.FC<QuizModalProps> = ({
   const [activeTab, setActiveTab] = useState<'study' | 'quiz'>('study');
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
+  const [submittedCode, setSubmittedCode] = useState<string>('');
   const [attemptResult, setAttemptResult] = useState<QuestionAttemptResult | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const currentQ = questions[currentIndex];
 
+  React.useEffect(() => {
+    if (currentQ && currentQ.starter_code) {
+      setSubmittedCode(currentQ.starter_code);
+    } else {
+      setSubmittedCode('');
+    }
+    setSelectedOption(null);
+    setAttemptResult(null);
+  }, [currentIndex, currentQ]);
+
   const handleSubmit = async () => {
-    if (!currentQ || !selectedOption || isSubmitting) return;
+    if (!currentQ || isSubmitting) return;
+    const isCoding = currentQ.question_type === 'CODING' || !!currentQ.starter_code;
+    if (!isCoding && !selectedOption) return;
 
     setIsSubmitting(true);
     try {
-      const result = await submitQuestion(currentQ.id, selectedOption, 15.0, 1);
+      const learnerId = getStoredLearnerId();
+      const result = await submitQuestion(
+        currentQ.id,
+        selectedOption || '',
+        15.0,
+        learnerId,
+        isCoding ? submittedCode : undefined
+      );
       setAttemptResult(result);
       onRefreshDashboard();
     } catch (err) {
@@ -51,6 +71,8 @@ export const QuizModal: React.FC<QuizModalProps> = ({
       onClose();
     }
   };
+
+  const isCodingQuestion = currentQ?.question_type === 'CODING' || !!currentQ?.starter_code;
 
   return (
     <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -148,22 +170,47 @@ export const QuizModal: React.FC<QuizModalProps> = ({
                     {currentQ.question_text}
                   </h4>
 
-                  <div className="space-y-2 mt-4">
-                    {currentQ.options.map((opt, i) => (
-                      <button
-                        key={i}
-                        onClick={() => !attemptResult && setSelectedOption(opt)}
+                  {isCodingQuestion ? (
+                    <div className="space-y-3 mt-4">
+                      <div className="flex items-center justify-between text-xs text-slate-500 font-mono">
+                        <span className="flex items-center gap-1.5 font-semibold text-indigo-600">
+                          <Code className="w-4 h-4" /> Python 3 Sandbox
+                        </span>
+                        <span>Auto-evaluated against unit tests</span>
+                      </div>
+                      <textarea
+                        value={submittedCode}
+                        onChange={(e) => !attemptResult && setSubmittedCode(e.target.value)}
                         disabled={!!attemptResult}
-                        className={`w-full p-3.5 rounded-xl border text-left text-xs font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1 ${
-                          selectedOption === opt
-                            ? 'bg-indigo-50 border-indigo-500 text-indigo-900 shadow-md ring-1 ring-indigo-500'
-                            : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300 hover:-translate-y-0.5 hover:shadow-sm'
-                        } ${!!attemptResult ? 'opacity-80 cursor-default hover:translate-y-0 hover:shadow-none' : 'cursor-pointer'}`}
-                      >
-                        {opt}
-                      </button>
-                    ))}
-                  </div>
+                        rows={8}
+                        className="w-full font-mono text-xs bg-slate-900 text-slate-100 p-4 rounded-xl border border-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        placeholder="# Write your Python code here..."
+                      />
+                      {currentQ.test_cases && currentQ.test_cases.length > 0 && (
+                        <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 text-xs">
+                          <span className="font-bold text-slate-700 block mb-1">Visible Test Sample:</span>
+                          <code className="text-indigo-700">{currentQ.test_cases[0].input} → {currentQ.test_cases[0].expected_output}</code>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="space-y-2 mt-4">
+                      {currentQ.options.map((opt, i) => (
+                        <button
+                          key={i}
+                          onClick={() => !attemptResult && setSelectedOption(opt)}
+                          disabled={!!attemptResult}
+                          className={`w-full p-3.5 rounded-xl border text-left text-xs font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1 ${
+                            selectedOption === opt
+                              ? 'bg-indigo-50 border-indigo-500 text-indigo-900 shadow-md ring-1 ring-indigo-500'
+                              : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-slate-300 hover:-translate-y-0.5 hover:shadow-sm'
+                          } ${attemptResult ? 'opacity-80 cursor-default hover:translate-y-0 hover:shadow-none' : 'cursor-pointer'}`}
+                        >
+                          {opt}
+                        </button>
+                      ))}
+                    </div>
+                  )}
 
                   {/* Immediate Feedback Card after submit (PART 5 & 6) */}
                   {attemptResult && (
@@ -261,11 +308,11 @@ export const QuizModal: React.FC<QuizModalProps> = ({
               ) : !attemptResult ? (
                 <button
                   onClick={handleSubmit}
-                  disabled={!selectedOption || isSubmitting}
+                  disabled={(isCodingQuestion ? !submittedCode.trim() : !selectedOption) || isSubmitting}
                   className="ml-auto flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-md transition-all hover:-translate-y-0.5 disabled:opacity-50 disabled:hover:translate-y-0 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
                 >
                   {isSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
-                  {isSubmitting ? 'Evaluating BKT...' : 'Submit Answer'}
+                  {isSubmitting ? (isCodingQuestion ? 'Executing Test Cases...' : 'Evaluating BKT...') : (isCodingQuestion ? 'Run & Submit Code' : 'Submit Answer')}
                 </button>
               ) : (
                 <button

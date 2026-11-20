@@ -145,6 +145,8 @@ export interface Question {
   difficulty: string;
   estimated_time_seconds: number;
   verified_status: string;
+  starter_code?: string;
+  test_cases?: Array<{ input: string; expected_output: string }>;
   source?: ContentSource;
 }
 
@@ -158,6 +160,23 @@ export interface QuestionAttemptResult {
   bkt_posterior: number;
   mastery_change: number;
   concept_code: string;
+  code_execution_result?: {
+    language: string;
+    passed_all: boolean;
+    total_tests: number;
+    passed_tests: number;
+    execution_time_ms: number;
+    results: Array<{
+      test_idx: number;
+      passed: boolean;
+      input?: string;
+      expected_output: string;
+      actual_output: string;
+      error?: string;
+    }>;
+    stdout?: string;
+    error?: string;
+  };
   next_recommendation?: Recommendation;
 }
 

@@ -1,20 +1,28 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from app.database.session import get_db
-from app.models.models import LearnerProfile, Concept, ConceptPrerequisite, KnowledgeState, QuestionAttempt, LearningSession, LearningGoal, Streak, Question
+from app.models.models import LearnerProfile, Concept, ConceptPrerequisite, KnowledgeState, QuestionAttempt, LearningSession, LearningGoal, Streak, Question, User
 from sqlalchemy import func
 from app.ml.bkt import BKTEngine
 from app.ml.recommendation import recommendation_engine
 from app.schemas.schemas import DashboardResponse
+from app.core.auth import resolve_learner_id, get_current_user_optional
+from typing import Optional
 
 router = APIRouter(prefix="/api/dashboard", tags=["Dashboard"])
 
 @router.get("", response_model=DashboardResponse)
-def get_dashboard(learner_id: int = 1, db: Session = Depends(get_db)):
-    learner = db.query(LearnerProfile).filter(LearnerProfile.id == learner_id).first()
+def get_dashboard(
+    learner_id: Optional[int] = None,
+    current_user: Optional[User] = Depends(get_current_user_optional),
+    db: Session = Depends(get_db)
+):
+    resolved_id = resolve_learner_id(learner_id, current_user, db)
+    learner = db.query(LearnerProfile).filter(LearnerProfile.id == resolved_id).first()
     if not learner:
         learner = db.query(LearnerProfile).first()
-        learner_id = learner.id if learner else 1
+        resolved_id = learner.id if learner else 1
+    learner_id = resolved_id
 
     user_name = learner.user.full_name if (learner and learner.user) else "Learner"
     class_name = learner.class_name if learner else "B.Tech CSE"
@@ -141,18 +149,23 @@ def get_dashboard(learner_id: int = 1, db: Session = Depends(get_db)):
     }
 
     # 4. Recent Activity Log
-    recent_attempts = db.query(QuestionAttempt).filter(QuestionAttempt.learner_id == learner_id).order_by(QuestionAttempt.timestamp.desc()).limit(5).all()
+    recent_attempts = db.query(QuestionAttempt).filter(QuestionAttempt.learner_id == learner_id).order_by(QuestionAttempt.timestamp.desc()).limit(10).all()
     recent_activity = []
 
     for a in recent_attempts:
         q = a.question
         concept_title = q.concept.title if (q and q.concept) else "Concept"
+        concept_code = q.concept.code if (q and q.concept) else "Concept"
         recent_activity.append({
             "id": a.id,
             "title": f"{'Solved' if a.is_correct else 'Attempted'} question on {concept_title}",
             "type": "QUIZ",
             "is_correct": a.is_correct,
-            "timestamp": a.timestamp.strftime("%Y-%m-%d %H:%M")
+            "timestamp": a.timestamp.strftime("%Y-%m-%d %H:%M"),
+            "concept_code": concept_code,
+            "concept_title": concept_title,
+            "bkt_prior": a.bkt_prior,
+            "bkt_posterior": a.bkt_posterior
         })
 
     if not recent_activity:
