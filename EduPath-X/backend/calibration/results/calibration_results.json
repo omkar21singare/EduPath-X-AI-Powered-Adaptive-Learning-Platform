@@ -1,0 +1,32 @@
+{
+  "experiment": {
+    "name": "Rasch_1PL_Validation",
+    "seed": 42,
+    "n_learners": 1000,
+    "n_items": 44,
+    "model": "Rasch/1PL",
+    "exposure": "complete"
+  },
+  "item_recovery": {
+    "pearson_r": 0.9952765098968103,
+    "spearman_r": 0.9949260042283298,
+    "rmse": 0.08306369085578265,
+    "mae": 0.06635763691219941
+  },
+  "ability_recovery": {
+    "pearson_r": 0.9403691196317637,
+    "spearman_r": 0.9410800879033283,
+    "rmse": 0.3530384063730129,
+    "mae": 0.278535241577934
+  },
+  "prediction": {
+    "log_loss": 0.5514246142850375,
+    "brier_score": 0.18671048188636502,
+    "accuracy": 0.7156818181818182,
+    "auc": 0.7897788166866531
+  },
+  "identification": {
+    "alignment_method": "Mean shift matching true mean",
+    "offset": 0.05417409453402651
+  }
+}

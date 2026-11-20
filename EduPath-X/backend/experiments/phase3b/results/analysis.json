@@ -1,0 +1,72 @@
+{
+    "overall": {
+        "QTM_logrank_p_raw": 0.5547778148130654,
+        "QTM_logrank_p_holm": 1.0,
+        "FM_wilcoxon_p_raw": 0.5132242658666606,
+        "FM_wilcoxon_p_holm": 1.0,
+        "FM_mean_diff": -0.0019376048247832737,
+        "FM_cohen_dz": -0.04980019534710222,
+        "FM_ci_95": [
+            -0.008164113574501789,
+            0.004288903924935241
+        ]
+    },
+    "profiles": {
+        "Fast": {
+            "Adaptive_FM": 0.8328379424473645,
+            "IRT_Adaptive_FM": 0.8270288905522227,
+            "Fixed_FM": 0.9493178367614746,
+            "FM_diff": -0.005809051895141604,
+            "FM_cohen_dz": -0.26381559632756363,
+            "FM_p": 0.0717634965208103,
+            "QTM_logrank_p": 0.4379695755160632,
+            "Adaptive_censoring_rate": 0.020000000000000018,
+            "IRT_censoring_rate": 0.0,
+            "Adaptive_median_QTM": 31.0,
+            "IRT_median_QTM": 30.0
+        },
+        "Average": {
+            "Adaptive_FM": 0.7396200094560784,
+            "IRT_Adaptive_FM": 0.7438741852896399,
+            "Fixed_FM": 0.8228130360933495,
+            "FM_diff": 0.004254175833561471,
+            "FM_cohen_dz": 0.10637134522171525,
+            "FM_p": 0.49519801818457254,
+            "QTM_logrank_p": 0.6267898465881729,
+            "Adaptive_censoring_rate": 0.14,
+            "IRT_censoring_rate": 0.07999999999999996,
+            "Adaptive_median_QTM": 41.0,
+            "IRT_median_QTM": 42.0
+        },
+        "Struggling": {
+            "Adaptive_FM": 0.6081055542680541,
+            "IRT_Adaptive_FM": 0.6038476158552845,
+            "Fixed_FM": 0.6090503911987311,
+            "FM_diff": -0.004257938412769688,
+            "FM_cohen_dz": -0.08586691480698433,
+            "FM_p": 0.6820249188646081,
+            "QTM_logrank_p": 0.7124861283469952,
+            "Adaptive_censoring_rate": 0.78,
+            "IRT_censoring_rate": 0.76,
+            "Adaptive_median_QTM": null,
+            "IRT_median_QTM": null
+        }
+    },
+    "repetition": {
+        "Fixed": {
+            "mean_unique_questions": 34.0,
+            "mean_repetition_rate": 0.3199999999999999,
+            "max_repetition_global": 5
+        },
+        "Adaptive": {
+            "mean_unique_questions": 25.48,
+            "mean_repetition_rate": 0.34859591769185594,
+            "max_repetition_global": 7
+        },
+        "IRT_Adaptive": {
+            "mean_unique_questions": 12.553333333333333,
+            "mean_repetition_rate": 0.6701463225888682,
+            "max_repetition_global": 17
+        }
+    }
+}

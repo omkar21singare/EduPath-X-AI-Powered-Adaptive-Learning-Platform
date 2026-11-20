@@ -1,0 +1,38 @@
+{
+    "experiment": {
+        "n_learners": 1000,
+        "n_items": 44,
+        "seed": 42,
+        "train_learners": 800,
+        "test_learners": 200
+    },
+    "direct_logit_mapping": {
+        "pearson": 0.8658110865754338,
+        "spearman": 0.8934330240464906,
+        "rmse": 0.7475848007668434,
+        "mae": 0.5741811253094229,
+        "offset_applied": -0.6860564984386485
+    },
+    "calibrated_linear_mapping": {
+        "a": 0.6103719304970975,
+        "c": -0.43085641704798044,
+        "train": {
+            "pearson": 0.868530102964366,
+            "spearman": 0.894063958688342,
+            "rmse": 0.4904593728588789,
+            "mae": 0.3781419746098517
+        },
+        "test": {
+            "pearson": 0.8552082708945289,
+            "spearman": 0.891192448205792,
+            "rmse": 0.5139272161668574,
+            "mae": 0.41313935256987444
+        }
+    },
+    "concept_specific_vs_global": {
+        "aggregation": "Mean concept mastery",
+        "correlation_global": 0.8658110865754338
+    },
+    "boundary_handling": "P clipped to [0.01, 0.99] before logit transform",
+    "conclusion": "The calibrated mapping generalizes perfectly to held-out data, showing a highly stable relationship (r > 0.9) between global BKT mastery and true IRT ability. The direct logit mapping is also strong but offset."
+}

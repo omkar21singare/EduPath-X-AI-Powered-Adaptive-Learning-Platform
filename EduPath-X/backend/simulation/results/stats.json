@@ -1,0 +1,89 @@
+{
+  "Fast": {
+    "Final_Mastery": {
+      "test": "Wilcoxon Signed-Rank Test",
+      "n_pairs": 50,
+      "statistic": 0.0,
+      "p_value": 7.548390027588035e-10,
+      "mean_diff_adaptive_minus_fixed": -0.1193907418152367,
+      "cohens_d": -2.992025096459462,
+      "95_CI": [
+        -0.13073104555779008,
+        -0.10805043807268334
+      ],
+      "corrected_p_value": 2.2645170082764104e-09,
+      "alpha": 0.05,
+      "is_significant_after_correction": true
+    },
+    "Questions_To_Mastery_Survival": {
+      "test": "Log-Rank Test",
+      "reason": "Survival analysis for right-censored time-to-event data.",
+      "n_pairs": 50,
+      "statistic": 112.03454798292994,
+      "p_value": 3.511377936062554e-26,
+      "fixed_km_median": 47.0,
+      "adaptive_km_median": 30.0,
+      "corrected_p_value": 2.1068267616375323e-25,
+      "alpha": 0.05,
+      "is_significant_after_correction": true
+    }
+  },
+  "Average": {
+    "Final_Mastery": {
+      "test": "Wilcoxon Signed-Rank Test",
+      "n_pairs": 50,
+      "statistic": 0.0,
+      "p_value": 1.7763568394002505e-15,
+      "mean_diff_adaptive_minus_fixed": -0.08757581516828739,
+      "cohens_d": -2.1149316697268614,
+      "95_CI": [
+        -0.09934393592819678,
+        -0.07580769440837799
+      ],
+      "corrected_p_value": 7.105427357601002e-15,
+      "alpha": 0.05,
+      "is_significant_after_correction": true
+    },
+    "Questions_To_Mastery_Survival": {
+      "test": "Log-Rank Test",
+      "reason": "Survival analysis for right-censored time-to-event data.",
+      "n_pairs": 50,
+      "statistic": 105.41682715994278,
+      "p_value": 9.896589483800303e-25,
+      "fixed_km_median": "Median QTM not reached within 50 interactions.",
+      "adaptive_km_median": 39.0,
+      "corrected_p_value": 4.948294741900151e-24,
+      "alpha": 0.05,
+      "is_significant_after_correction": true
+    }
+  },
+  "Struggling": {
+    "Final_Mastery": {
+      "test": "Wilcoxon Signed-Rank Test",
+      "n_pairs": 50,
+      "statistic": 430.0,
+      "p_value": 0.045027510990479414,
+      "mean_diff_adaptive_minus_fixed": -0.008815501862220559,
+      "cohens_d": -0.18932816578400377,
+      "95_CI": [
+        -0.022048281562405604,
+        0.004417277837964485
+      ],
+      "corrected_p_value": 0.045027510990479414,
+      "alpha": 0.05,
+      "is_significant_after_correction": true
+    },
+    "Questions_To_Mastery_Survival": {
+      "test": "Log-Rank Test",
+      "reason": "Survival analysis for right-censored time-to-event data.",
+      "n_pairs": 50,
+      "statistic": 16.177793164095704,
+      "p_value": 5.7666189205122794e-05,
+      "fixed_km_median": "Median QTM not reached within 50 interactions.",
+      "adaptive_km_median": "Median QTM not reached within 50 interactions.",
+      "corrected_p_value": 0.00011533237841024559,
+      "alpha": 0.05,
+      "is_significant_after_correction": true
+    }
+  }
+}

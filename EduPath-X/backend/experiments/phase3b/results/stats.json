@@ -1,0 +1,20 @@
+{
+  "hypothesis_family": [
+    "FM_IRT_vs_Adaptive",
+    "QTM_IRT_vs_Adaptive"
+  ],
+  "final_true_mastery": {
+    "mean_diff": -0.0019376048247832737,
+    "ci_95": [
+      -0.008164113574501789,
+      0.004288903924935241
+    ],
+    "cohen_dz": -0.04980019534710222,
+    "wilcoxon_stat": 4357.0,
+    "wilcoxon_p": 0.5132242658666606
+  },
+  "qtm_survival": {
+    "logrank_stat": 0.34882713095947493,
+    "logrank_p": 0.5547778148130654
+  }
+}

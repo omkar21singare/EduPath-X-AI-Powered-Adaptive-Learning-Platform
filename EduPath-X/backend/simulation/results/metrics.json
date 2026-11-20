@@ -1,0 +1,80 @@
+{
+  "Fast": {
+    "Fixed": {
+      "num_learners": 50,
+      "num_completed_events": 31,
+      "num_censored": 19,
+      "completion_event_rate": 0.62,
+      "censoring_rate": 0.38,
+      "conditional_qtm_mean": 46.193548387096776,
+      "mean_observed_censored_time_at_50": 47.64,
+      "mean_final_true_mastery": 0.9201059033010397,
+      "std_final_true_mastery": 2.220446049250313e-16,
+      "mean_retention_drop": 0.02921193346043516
+    },
+    "Adaptive": {
+      "num_learners": 50,
+      "num_completed_events": 50,
+      "num_censored": 0,
+      "completion_event_rate": 1.0,
+      "censoring_rate": 0.0,
+      "conditional_qtm_mean": 31.02,
+      "mean_observed_censored_time_at_50": 31.02,
+      "mean_final_true_mastery": 0.8007151614858027,
+      "std_final_true_mastery": 0.03950194286394282,
+      "mean_retention_drop": 0.02495927000360533
+    }
+  },
+  "Average": {
+    "Fixed": {
+      "num_learners": 50,
+      "num_completed_events": 5,
+      "num_censored": 45,
+      "completion_event_rate": 0.1,
+      "censoring_rate": 0.9,
+      "conditional_qtm_mean": 46.6,
+      "mean_observed_censored_time_at_50": 49.66,
+      "mean_final_true_mastery": 0.7739464078008942,
+      "std_final_true_mastery": 1.1102230246251565e-16,
+      "mean_retention_drop": 0.048866628292455146
+    },
+    "Adaptive": {
+      "num_learners": 50,
+      "num_completed_events": 50,
+      "num_censored": 0,
+      "completion_event_rate": 1.0,
+      "censoring_rate": 0.0,
+      "conditional_qtm_mean": 39.92,
+      "mean_observed_censored_time_at_50": 39.92,
+      "mean_final_true_mastery": 0.6863705926326069,
+      "std_final_true_mastery": 0.04099216779613809,
+      "mean_retention_drop": 0.04251666521274731
+    }
+  },
+  "Struggling": {
+    "Fixed": {
+      "num_learners": 50,
+      "num_completed_events": 0,
+      "num_censored": 50,
+      "completion_event_rate": 0.0,
+      "censoring_rate": 1.0,
+      "conditional_qtm_mean": null,
+      "mean_observed_censored_time_at_50": 50.0,
+      "mean_final_true_mastery": 0.5425471498216008,
+      "std_final_true_mastery": 1.1102230246251565e-16,
+      "mean_retention_drop": 0.06650324137713037
+    },
+    "Adaptive": {
+      "num_learners": 50,
+      "num_completed_events": 14,
+      "num_censored": 36,
+      "completion_event_rate": 0.28,
+      "censoring_rate": 0.72,
+      "conditional_qtm_mean": 44.142857142857146,
+      "mean_observed_censored_time_at_50": 48.36,
+      "mean_final_true_mastery": 0.5337316479593802,
+      "std_final_true_mastery": 0.046094048229625026,
+      "mean_retention_drop": 0.06517850242346157
+    }
+  }
+}
